@@ -53,6 +53,7 @@ import reactor.util.Loggers;
 import reactor.util.annotation.Nullable;
 
 import java.time.Duration;
+import java.util.concurrent.Executor;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.Function;
 
@@ -62,7 +63,8 @@ import static io.r2dbc.postgresql.client.TransactionStatus.OPEN;
 /**
  * An implementation of {@link Connection} for connecting to a PostgreSQL database.
  */
-final class PostgresqlConnection implements io.r2dbc.postgresql.api.PostgresqlConnection {
+final class PostgresqlConnection implements io.r2dbc.postgresql.api.PostgresqlConnection,
+                                            Executor {
 
     private final Logger logger = Loggers.getLogger(this.getClass());
 
@@ -300,6 +302,15 @@ final class PostgresqlConnection implements io.r2dbc.postgresql.api.PostgresqlCo
         }
 
         return false;
+    }
+
+    @Override
+    public void execute(Runnable command) {
+        if (this.client instanceof Executor) {
+            ((Executor) client).execute(command);
+        } else {
+            command.run();
+        }
     }
 
     @Override

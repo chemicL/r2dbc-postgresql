@@ -74,6 +74,7 @@ import java.util.Optional;
 import java.util.Queue;
 import java.util.StringJoiner;
 import java.util.TimeZone;
+import java.util.concurrent.Executor;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.concurrent.atomic.AtomicLongFieldUpdater;
@@ -90,7 +91,7 @@ import static io.r2dbc.postgresql.client.TransactionStatus.IDLE;
  *
  * @see TcpClient
  */
-public final class ReactorNettyClient implements Client {
+public final class ReactorNettyClient implements Client, Executor {
 
     static final String CONNECTION_FAILURE = "08006";
 
@@ -196,6 +197,15 @@ public final class ReactorNettyClient implements Client {
             .onErrorResume(this::resumeError)
             .doAfterTerminate(this::handleClose)
             .subscribe();
+    }
+
+    @Override
+    public void execute(Runnable command) {
+        if (connection.channel().eventLoop().inEventLoop()) {
+            command.run();
+        } else {
+            connection.channel().eventLoop().execute(command);
+        }
     }
 
     @Override
